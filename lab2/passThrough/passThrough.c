@@ -672,11 +672,22 @@ Return Value:
         {
             if (Data->Iopb->MajorFunction == IRP_MJ_WRITE)
             {
-                DbgPrint("[PassThrough][PRE] Write\n");
+                DbgPrint("[PassThrough][PRE] Write");
+
+                if (Data->Iopb->Parameters.Write.WriteBuffer) {
+                    DbgPrint("[PassThrough] InBuffer: %s\n", Data->Iopb->Parameters.Write.WriteBuffer);
+
+                    unsigned char buf[128];
+                    memcpy(buf, Data->Iopb->Parameters.Write.WriteBuffer, 128);
+                    buf[1] = '#';
+                    memcpy(Data->Iopb->Parameters.Write.WriteBuffer, buf, 128);
+
+                    DbgPrint("[PassThrough] OutBuffer: %s\n", Data->Iopb->Parameters.Write.WriteBuffer);
+                }
             }
             else
             {
-                DbgPrint("[PassThrough] FAILWrite\n");
+                DbgPrint("[PassThrough][PRE] FAILWrite\n");
             }
         }
     }
@@ -824,6 +835,17 @@ Return Value:
             if (Data->Iopb->MajorFunction == IRP_MJ_READ)
             {
                 DbgPrint("[PassThrough] Read\n");
+
+                if (Data->Iopb->Parameters.Read.ReadBuffer) {
+                    DbgPrint("[PassThrough] InBuffer: %s\n", Data->Iopb->Parameters.Read.ReadBuffer);
+
+                    unsigned char buf[128];
+                    memcpy(buf, Data->Iopb->Parameters.Read.ReadBuffer, 128);
+                    buf[5] = '#';
+                    memcpy(Data->Iopb->Parameters.Read.ReadBuffer, buf, 128);
+
+                    DbgPrint("[PassThrough] OutBuffer: %s\n", Data->Iopb->Parameters.Read.ReadBuffer);
+                }
             }
             else
             {
