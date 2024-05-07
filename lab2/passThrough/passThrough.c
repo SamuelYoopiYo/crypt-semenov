@@ -22,6 +22,15 @@ Environment:
 #include <dontuse.h>
 #include <suppress.h>
 
+#include "aes.h"
+
+#define __BUF_LEN 256
+
+const int8_t KEY[32] = "00001111aaaa00001111bbbb00001111";
+const int8_t IV[16] = "00001111aaaabbbb";
+
+
+
 #pragma prefast(disable:__WARNING_ENCODE_MEMBER_FUNCTION_POINTER, "Not valid for kernel mode drivers")
 
 
@@ -677,10 +686,15 @@ Return Value:
                 if (Data->Iopb->Parameters.Write.WriteBuffer) {
                     DbgPrint("[PassThrough] InBuffer: %s\n", Data->Iopb->Parameters.Write.WriteBuffer);
 
-                    unsigned char buf[128];
-                    memcpy(buf, Data->Iopb->Parameters.Write.WriteBuffer, 128);
-                    buf[1] = '#';
-                    memcpy(Data->Iopb->Parameters.Write.WriteBuffer, buf, 128);
+                    unsigned char buf[__BUF_LEN];
+                    memcpy(buf, Data->Iopb->Parameters.Write.WriteBuffer, __BUF_LEN);
+
+                    //buf[5] = '#';
+                    struct AES_ctx ctx;
+                    AES_init_ctx_iv(&ctx, KEY, IV);
+                    AES_CBC_encrypt_buffer(&ctx, &buf, __BUF_LEN);
+
+                    memcpy(Data->Iopb->Parameters.Write.WriteBuffer, buf, __BUF_LEN);
 
                     DbgPrint("[PassThrough] OutBuffer: %s\n", Data->Iopb->Parameters.Write.WriteBuffer);
                 }
@@ -839,10 +853,14 @@ Return Value:
                 if (Data->Iopb->Parameters.Read.ReadBuffer) {
                     DbgPrint("[PassThrough] InBuffer: %s\n", Data->Iopb->Parameters.Read.ReadBuffer);
 
-                    unsigned char buf[128];
-                    memcpy(buf, Data->Iopb->Parameters.Read.ReadBuffer, 128);
-                    buf[5] = '#';
-                    memcpy(Data->Iopb->Parameters.Read.ReadBuffer, buf, 128);
+                    unsigned char buf[__BUF_LEN];
+                    memcpy(buf, Data->Iopb->Parameters.Read.ReadBuffer, __BUF_LEN);
+
+                    struct AES_ctx ctx;
+                    AES_init_ctx_iv(&ctx, KEY, IV);
+                    AES_CBC_decrypt_buffer(&ctx, &buf, __BUF_LEN);
+
+                    memcpy(Data->Iopb->Parameters.Read.ReadBuffer, buf, __BUF_LEN);
 
                     DbgPrint("[PassThrough] OutBuffer: %s\n", Data->Iopb->Parameters.Read.ReadBuffer);
                 }
