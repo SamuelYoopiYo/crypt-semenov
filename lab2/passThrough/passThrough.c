@@ -655,11 +655,31 @@ Return Value:
 {
     NTSTATUS status;
 
-    UNREFERENCED_PARAMETER( FltObjects );
-    UNREFERENCED_PARAMETER( CompletionContext );
+    UNREFERENCED_PARAMETER(FltObjects);
+    UNREFERENCED_PARAMETER(CompletionContext);
 
-    PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("PassThrough!PtPreOperationPassThrough: Entered\n") );
+    PFLT_FILE_NAME_INFORMATION NameInfo = NULL;
+    status = FltGetFileNameInformation(
+        Data,
+        FLT_FILE_NAME_NORMALIZED |
+        FLT_FILE_NAME_QUERY_DEFAULT,
+        &NameInfo);
+
+    if (NT_SUCCESS(status))
+    {
+        UNICODE_STRING required_extension = RTL_CONSTANT_STRING(L"labtwo");
+        if (RtlEqualUnicodeString(&required_extension, &NameInfo->Extension, FALSE))
+        {
+            if (Data->Iopb->MajorFunction == IRP_MJ_WRITE)
+            {
+                DbgPrint("[PassThrough][PRE] Write\n");
+            }
+            else
+            {
+                DbgPrint("[PassThrough] FAILWrite\n");
+            }
+        }
+    }
 
     //
     //  See if this is an operation we would like the operation status
@@ -670,16 +690,18 @@ Return Value:
     //        actually granted.
     //
 
-    if (PtDoRequestOperationStatus( Data )) {
+    if (PtDoRequestOperationStatus(Data))
+    {
+        status = FltRequestOperationStatusCallback(Data,
+            PtOperationStatusCallback,
+            (PVOID)(++OperationStatusCtx));
 
-        status = FltRequestOperationStatusCallback( Data,
-                                                    PtOperationStatusCallback,
-                                                    (PVOID)(++OperationStatusCtx) );
-        if (!NT_SUCCESS(status)) {
+        if (!NT_SUCCESS(status))
+        {
 
-            PT_DBG_PRINT( PTDBG_TRACE_OPERATION_STATUS,
-                          ("PassThrough!PtPreOperationPassThrough: FltRequestOperationStatusCallback Failed, status=%08x\n",
-                           status) );
+            PT_DBG_PRINT(PTDBG_TRACE_OPERATION_STATUS,
+                ("PassThrough!PtPreOperationPassThrough: FltRequestOperationStatusCallback Failed, status=%08x\n",
+                    status));
         }
     }
 
@@ -777,15 +799,14 @@ Return Value:
 
 --*/
 {
-    UNREFERENCED_PARAMETER( Data );
-    UNREFERENCED_PARAMETER( FltObjects );
-    UNREFERENCED_PARAMETER( CompletionContext );
-    UNREFERENCED_PARAMETER( Flags );
+    UNREFERENCED_PARAMETER(Data);
+    UNREFERENCED_PARAMETER(FltObjects);
+    UNREFERENCED_PARAMETER(CompletionContext);
+    UNREFERENCED_PARAMETER(Flags);
 
-    PT_DBG_PRINT( PTDBG_TRACE_ROUTINES,
-                  ("PassThrough!PtPostOperationPassThrough: Entered\n") );
+    PT_DBG_PRINT(PTDBG_TRACE_ROUTINES,
+        ("PassThrough!PtPostOperationPassThrough: Entered\n"));
 
-    //код из методички
     NTSTATUS status;
     PFLT_FILE_NAME_INFORMATION NameInfo = NULL;
     status = FltGetFileNameInformation(
@@ -793,41 +814,23 @@ Return Value:
         FLT_FILE_NAME_NORMALIZED |
         FLT_FILE_NAME_QUERY_DEFAULT,
         &NameInfo);
-    UNICODE_STRING required_extension = RTL_CONSTANT_STRING(L"testlabextension");
-    if (!NT_SUCCESS(status))
+
+    if (NT_SUCCESS(status))
     {
-        //…
-    }
-    else {
-        // Вариант 2022, начало
-        if (
-            RtlEqualUnicodeString(&required_extension,
-                &NameInfo->Extension, FALSE) == TRUE) {
-            // в целях отладки можно вставить DbgPrint(...)
-        // Вариант 2022, конец
+        UNICODE_STRING required_extension = RTL_CONSTANT_STRING(L"labtwo");
+        if (RtlEqualUnicodeString(&required_extension, &NameInfo->Extension, FALSE))
+        {
 
-        /* Вариант 2023, начало
-
-        PWSTR extensionStart = wcsrchr(NameInfo->Name.Buffer, L'.');
-        if (extensionStart != NULL)
-                {
-                    UNICODE_STRING extension;
-
-                    RtlInitUnicodeString(&extension, extensionStart);
-
-                    if (RtlEqualUnicodeString(&required_extension, &extension, FALSE)) {
-
-        Вариант  2023, конец */
-            if (Data->Iopb->MajorFunction == IRP_MJ_WRITE) {
-                //здесь - шифрование Data->Iopb->Parameters.Write.WriteBuffer
+            if (Data->Iopb->MajorFunction == IRP_MJ_READ)
+            {
+                DbgPrint("[PassThrough] Read\n");
             }
-            else if (Data->Iopb->MajorFunction == IRP_MJ_READ) {
-                //здесь - расшифровка Data->Iopb->Parameters.Read.ReadBuffer
+            else
+            {
+                DbgPrint("[PassThrough] FAILRead\n");
             }
         }
     }
-
-
 
     return FLT_POSTOP_FINISHED_PROCESSING;
 }
